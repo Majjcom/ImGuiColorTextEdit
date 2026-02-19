@@ -8,7 +8,7 @@
 #include <unordered_map>
 #include <map>
 #include <regex>
-#include <mayEngine/tools/imgui/imgui.h>
+#include "imgui.h"
 
 class TextEditor
 {
@@ -180,7 +180,6 @@ public:
 		static const LanguageDefinition& SQL();
 		static const LanguageDefinition& AngelScript();
 		static const LanguageDefinition& Lua();
-		static const LanguageDefinition& ShitLang();
 	};
 
 	TextEditor();
