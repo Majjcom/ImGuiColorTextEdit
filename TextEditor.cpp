@@ -1368,6 +1368,7 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 			u.mRemoved = GetSelectedText();
 			u.mRemovedStart = mState.mSelectionStart;
 			u.mRemovedEnd = mState.mSelectionEnd;
+			coord = mState.mSelectionStart;
 			DeleteSelection();
 		}
 	} // HasSelection
