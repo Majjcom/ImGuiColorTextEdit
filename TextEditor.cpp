@@ -695,6 +695,11 @@ ImU32 TextEditor::GetGlyphColor(const Glyph & aGlyph) const
 	return color;
 }
 
+void TextEditor::FlushStartTime()
+{
+	mStartTime = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count() - 401;
+}
+
 void TextEditor::HandleKeyboardInputs()
 {
 	ImGuiIO& io = ImGui::GetIO();
@@ -1230,9 +1235,39 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 {
 	assert(!mReadOnly);
 
+	FlushStartTime();
+
 	UndoRecord u;
 
 	u.mBefore = mState;
+
+	auto coord = GetActualCursorCoordinates();
+
+	// Shift Tab
+	if (aChar == '\t' && aShift && mState.mSelectionStart.mLine == mState.mSelectionEnd.mLine)
+	{
+		auto& line = mLines[coord.mLine];
+		bool ok = line.front().mChar == ' ';
+		auto iter = line.begin();
+		if (ok)
+		{
+			int count = 0;
+			for (int j = 0; j < mTabSize && !line.empty() && line.front().mChar == ' '; j++)
+			{
+				line.erase(line.begin());
+				count++;
+			}
+			u.mRemovedStart = Coordinates(coord.mLine, 0);
+			u.mAddedEnd = Coordinates(coord.mLine, count);
+			u.mRemoved = "";
+			for (int j = 0; j < count; j++)
+			{
+				u.mRemoved += ' ';
+			}
+			AddUndo(u);
+		}
+		return;
+	}
 
 	if (HasSelection())
 	{
@@ -1286,7 +1321,12 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 				}
 				else
 				{
-					line.insert(line.begin(), Glyph('\t', TextEditor::PaletteIndex::Background));
+					// Use Space instead of Tab
+					// line.insert(line.begin(), Glyph('\t', TextEditor::PaletteIndex::Background));
+					line.insert(line.begin(), Glyph(' ', TextEditor::PaletteIndex::Background));
+					line.insert(line.begin(), Glyph(' ', TextEditor::PaletteIndex::Background));
+					line.insert(line.begin(), Glyph(' ', TextEditor::PaletteIndex::Background));
+					line.insert(line.begin(), Glyph(' ', TextEditor::PaletteIndex::Background));
 					modified = true;
 				}
 			}
@@ -1332,7 +1372,7 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 		}
 	} // HasSelection
 
-	auto coord = GetActualCursorCoordinates();
+
 	u.mAddedStart = coord;
 
 	assert(!mLines.empty());
@@ -1358,6 +1398,12 @@ void TextEditor::EnterCharacter(ImWchar aChar, bool aShift)
 	{
 		char buf[7];
 		int e = ImTextCharToUtf8(buf, 7, aChar);
+		// Insert Space instead of Tab
+		if (aChar == '\t')
+		{
+			memcpy(buf, "    ", 4);
+			e = 4;
+		}
 		if (e > 0)
 		{
 			buf[e] = '\0';
@@ -1490,7 +1536,38 @@ void TextEditor::InsertText(const char * aValue)
 	auto start = std::min(pos, mState.mSelectionStart);
 	int totalLines = pos.mLine - start.mLine;
 
+	UndoRecord u{};
+	u.mBefore = mState;
+	u.mAddedStart = pos;
+	u.mAdded = aValue;
+
 	totalLines += InsertTextAt(pos, aValue);
+
+	Coordinates end = pos;
+	const char* aValueRec = aValue;
+
+	if (aValueRec[0] != '\0')
+	{
+		while (*aValueRec != '\0')
+		{
+			if (*aValueRec == '\r') aValueRec++;
+			else if (*aValueRec == '\n')
+			{
+				end.mLine++;
+				end.mColumn = 0;
+				aValueRec++;
+			}
+			else
+			{
+				end.mColumn++;
+				aValueRec++;
+			}
+		}
+		u.mAddedEnd = end;
+		u.mAfter = mState;
+		AddUndo(u);
+	}
+
 
 	SetSelection(pos, pos);
 	SetCursorPosition(pos);
@@ -1777,6 +1854,8 @@ void TextEditor::Delete()
 	if (mLines.empty())
 		return;
 
+	FlushStartTime();
+
 	UndoRecord u;
 	u.mBefore = mState;
 
@@ -1834,6 +1913,8 @@ void TextEditor::Backspace()
 
 	if (mLines.empty())
 		return;
+
+	FlushStartTime();
 
 	UndoRecord u;
 	u.mBefore = mState;
