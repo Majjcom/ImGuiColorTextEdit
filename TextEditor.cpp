@@ -998,7 +998,7 @@ void TextEditor::Render()
 					}
 					auto timeEnd = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::system_clock::now().time_since_epoch()).count();
 					auto elapsed = timeEnd - mStartTime;
-					if (elapsed > 400)
+					if (elapsed > 400 && !mReadOnly)
 					{
 						float width = 1.0f;
 						auto cindex = GetCharacterIndex(mState.mCursorPosition);
@@ -3247,7 +3247,7 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::Lua()
 		langDef.mSingleLineComment = "--";
 
 		langDef.mCaseSensitive = true;
-		langDef.mAutoIndentation = false;
+		langDef.mAutoIndentation = true;
 
 		langDef.mName = "Lua";
 
@@ -3301,9 +3301,9 @@ const TextEditor::LanguageDefinition& TextEditor::LanguageDefinition::ShitLang()
 		langDef.mSingleLineComment = "--";
 
 		langDef.mCaseSensitive = true;
-		langDef.mAutoIndentation = false;
+		langDef.mAutoIndentation = true;
 
-		langDef.mName = "Lua";
+		langDef.mName = "ShitLang";
 
 		inited = true;
 	}
